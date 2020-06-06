@@ -23,6 +23,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
@@ -57,6 +59,7 @@ public class Mandelbrot extends Canvas {
     private int height;
     private Image img;
     private String msg;
+    public double zoom; // variavel para controle de zoom
 
     /**
      * Construct a new Mandelbrot canvas.
@@ -66,8 +69,9 @@ public class Mandelbrot extends Canvas {
      *
      * @param height the size of the fractal (height x height pixels).
      */
-    public Mandelbrot(int height)
+    public Mandelbrot(int height, double zoom)
     {
+        this.zoom = zoom; // seta variavel de controle
         this.colorscheme = new int[MAX_ITERACAO+1];
         // fill array with color palette going from Red over Green to Blue
         int scale = (255 * 2) / MAX_ITERACAO;
@@ -173,9 +177,8 @@ public class Mandelbrot extends Canvas {
 
     @Override
     public void paint(Graphics g) {
-        AffineTransform at = new AffineTransform();
         Graphics2D g2 = (Graphics2D) g.create();
-        g2.transform(at);
+        g2.scale(zoom,zoom);//  seta o zoom
         // draw the fractal from the stored image
         g2.drawImage(this.img, 0, 0, null);
         // draw the message text in the lower-right-hand corner
@@ -187,6 +190,7 @@ public class Mandelbrot extends Canvas {
                 getWidth() - (data.length)*8,
                 getHeight() - 20);
     }
+
 
     /**
      * Auxiliary function that converts an array of pixels into a BufferedImage.
@@ -206,7 +210,7 @@ public class Mandelbrot extends Canvas {
     public static void main(String args[])
     {
         Frame f = new Frame();
-        Mandelbrot canvas = new Mandelbrot(HEIGHT);
+        Mandelbrot canvas = new Mandelbrot(HEIGHT, 0.5);
         f.setSize(HEIGHT, HEIGHT);
         f.add(canvas);
         f.addWindowListener(new WindowAdapter()
@@ -215,6 +219,36 @@ public class Mandelbrot extends Canvas {
             {
                 System.exit(0);
             }
+        });
+        f.addKeyListener(new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {}
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if(e.getKeyChar() == '+'){//zoom out
+                    canvas.zoom = canvas.zoom + 0.1 ;// guarda o tamanha atual no canvas original
+                    double  zoom =canvas.zoom;
+                    Mandelbrot canvas = new Mandelbrot(HEIGHT,zoom);// cria um novo canvas com tamanho atual
+                    f.setVisible(false);
+                    f.removeAll();
+                    f.add(canvas);
+                    f.setVisible(true);
+                }
+                if(e.getKeyChar() == '-'){
+                    canvas.zoom = canvas.zoom - 0.1 ;
+                    double  zoom =canvas.zoom;
+                    Mandelbrot canvas = new Mandelbrot(HEIGHT,zoom);
+                    f.setVisible(false);
+                    f.removeAll();
+                    f.add(canvas);
+                    f.setVisible(true);
+                }
+
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {}
         });
         f.setVisible(true);
     }
