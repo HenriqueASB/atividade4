@@ -23,19 +23,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.geom.AffineTransform;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DataBufferInt;
-import java.awt.image.DirectColorModel;
-import java.awt.image.Raster;
-import java.awt.image.SampleModel;
-import java.awt.image.WritableRaster;
+import java.awt.image.*;
 
 /**
  * Demo of using Fork/Join parallelism to speed up the rendering of the
@@ -59,7 +49,6 @@ public class Mandelbrot extends Canvas {
     private int height;
     private Image img;
     private String msg;
-    public double zoom; // variavel para controle de zoom
 
     /**
      * Construct a new Mandelbrot canvas.
@@ -69,31 +58,12 @@ public class Mandelbrot extends Canvas {
      *
      * @param height the size of the fractal (height x height pixels).
      */
-    public Mandelbrot(int height, double zoom)
-    {
-        this.zoom = zoom; // seta variavel de controle
-        this.colorscheme = new int[MAX_ITERACAO+1];
-        // fill array with color palette going from Red over Green to Blue
-        int scale = (255 * 2) / MAX_ITERACAO;
-
-        // going from Red to Green
-        for (int i = 0; i < (MAX_ITERACAO/2); i++)
-            //               Alpha=255  | Red                   | Green       | Blue=0
-            colorscheme[i] = 0xFF << 24 | (255 - i*scale) << 16 | i*scale << 8;
-
-        // going from Green to Blue
-        for (int i = 0; i < (MAX_ITERACAO/2); i++)
-            //                         Alpha=255 | Red=0 | Green              | Blue
-            colorscheme[i+MAX_ITERACAO/2] = 0xFF000000 | (255-i*scale) << 8 | i*scale;
-//            colorscheme[i+MAX_ITERACAO/2] = Cores.getCor(i) | (255-i*scale) << 8 | i*scale;
-
-        // convergence color
-        colorscheme[MAX_ITERACAO] = 0xFF0000FF; // Blue
-//        colorscheme[MAX_ITERACAO] = 0x469536; // Blue
+    public Mandelbrot(int height) {
+        handleColor();
 
         this.height = height;
         // fractal[x][y] = fractal[x + height*y]
-        this.fractal = new int[height*height];
+        this.fractal = new int[height * height];
 
         long start = System.currentTimeMillis();
 
@@ -105,69 +75,95 @@ public class Mandelbrot extends Canvas {
         this.img = getImageFromArray(fractal, height, height);
     }
 
+    // funcao que pinta o fractal
+    private void handleColor() {
+        this.colorscheme = new int[MAX_ITERACAO + 1];
+
+        // color in green scale
+        for (int i = 0; i < MAX_ITERACAO; i++)
+            colorscheme[i] = getColor(i);
+
+        // cor de dentro do fractal
+        colorscheme[MAX_ITERACAO] = rgb(255, 0, 0, 0);
+    }
+
+    // funcao que devolve o codigo rgb da cor do pixel de acordo com a iteracao que ele faz parte
+    private int getColor(int iteracao) {
+        int scala = 255 / (MAX_ITERACAO / 4); // os primeiros 1/4 de iteracoes vao ter cores mais contrastadas q o resto
+        int intensidade = Math.min(iteracao * scala, 255); // nao deixa a cor passar de 255
+
+        return rgb(255, intensidade, intensidade, intensidade); // calcula uma escala de cinza
+    }
+
+    // funcao que calcula o rgb para um unico int
+    private int rgb(int alpha, int red, int green, int blue) {
+        int rgb = alpha;
+        rgb = (rgb << 8) + red;
+        rgb = (rgb << 8) + green;
+        rgb = (rgb << 8) + blue;
+        return rgb;
+    }
+
     /**
      * Draws part of the mandelbrot fractal.
-     *
+     * <p>
      * This method calculates the colors of pixels in the square:
-     *
+     * <p>
      * (srcx, srcy)           (srcx+size, srcy)
-     *      +--------------------------+
-     *      |                          |
-     *      |                          |
-     *      |                          |
-     *      +--------------------------+
+     * +--------------------------+
+     * |                          |
+     * |                          |
+     * |                          |
+     * +--------------------------+
      * (srcx, srcy+size)      (srcx+size, srcy + size)
      */
-    private void calcMandelBrot(int srcx, int srcy, int size, int height)
-    {
+    private void calcMandelBrot(int srcx, int srcy, int size, int height) {
         double x, y, cx, cy;
         double modulo, real, imag;
         int iteracao;
 
         // loop over specified rectangle grid
-        for (int px = srcx; px < srcx + size; px++)
-        {
-            for (int py = srcy; py < srcy + size; py++)
-            {
-        /*
-          Neste for entramos para fazer anÃ¡lise de um
-          ponto em especifico do plano complexo.
-        */
+        for (int px = srcx; px < srcx + size; px++) {
+            for (int py = srcy; py < srcy + size; py++) {
+                /*
+                  Neste for entramos para fazer anÃ¡lise de um
+                  ponto em especifico do plano complexo.
+                */
 
                 // convert pixels into complex coordinates between (-2, 2)
                 cx = (px * 4.0) / height - 2;
                 cy = 2 - (py * 4.0) / height;
 
-        /*Para o processamento de cada ponto Ã© preciso
-          inicializar o nÃºmero de iteraÃ§Ãµes com zero.
-          */
+                /*Para o processamento de cada ponto Ã© preciso
+                  inicializar o nÃºmero de iteraÃ§Ãµes com zero.
+                  */
                 iteracao = 0;
 
         /*
         Na equacao zn+1=zn2+c, temos que z=x+yi
         Assim, para termos z0=x+yi=0 devemos fazer x=0 e y=0
         */
-                x=0; y=0;
+                x = 0;
+                y = 0;
 
         /*
         CÃ¡lculo do modulo do ponto (cx, cy) do plano complexo.
         Ou seja, a distancia do ponto (cx,cy) aa origem (0,0)
         do plano complexo.
         */
-                modulo = cx*cx+cy*cy;
+                modulo = cx * cx + cy * cy;
 
         /*
         Teste para verificar se o ponto (cx, cy) pertence,
         ou nao, ao conjunto de Mandelbrot.
         */
-                while (modulo <= 4 && iteracao < MAX_ITERACAO)
-                {
-                    real = x*x-y*y+cx;
-                    imag = 2*x*y+cy;
-                    modulo = real+real+imag*imag;
+                while (modulo <= 4 && iteracao < MAX_ITERACAO) {
+                    real = x * x - y * y + cx;
+                    imag = 2 * x * y + cy;
+                    modulo = real + real + imag * imag;
                     iteracao++;
-                    x=real;
-                    y=imag;
+                    x = real;
+                    y = imag;
                 }
 
                 fractal[px + height * py] = colorscheme[iteracao];
@@ -177,20 +173,17 @@ public class Mandelbrot extends Canvas {
 
     @Override
     public void paint(Graphics g) {
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.scale(zoom,zoom);//  seta o zoom
         // draw the fractal from the stored image
-        g2.drawImage(this.img, 0, 0, null);
+        g.drawImage(this.img, 0, 0, null);
         // draw the message text in the lower-right-hand corner
         byte[] data = this.msg.getBytes();
-        g2.drawBytes(
+        g.drawBytes(
                 data,
                 0,
                 data.length,
-                getWidth() - (data.length)*8,
+                getWidth() - (data.length) * 8,
                 getHeight() - 20);
     }
-
 
     /**
      * Auxiliary function that converts an array of pixels into a BufferedImage.
@@ -207,48 +200,15 @@ public class Mandelbrot extends Canvas {
         return image;
     }
 
-    public static void main(String args[])
-    {
+    public static void main(String args[]) {
         Frame f = new Frame();
-        Mandelbrot canvas = new Mandelbrot(HEIGHT, 0.5);
+        Mandelbrot canvas = new Mandelbrot(HEIGHT);
         f.setSize(HEIGHT, HEIGHT);
         f.add(canvas);
-        f.addWindowListener(new WindowAdapter()
-        {
-            public void windowClosing(WindowEvent e)
-            {
+        f.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
                 System.exit(0);
             }
-        });
-        f.addKeyListener(new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {}
-
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if(e.getKeyChar() == '+'){//zoom out
-                    canvas.zoom = canvas.zoom + 0.1 ;// guarda o tamanha atual no canvas original
-                    double  zoom =canvas.zoom;
-                    Mandelbrot canvas = new Mandelbrot(HEIGHT,zoom);// cria um novo canvas com tamanho atual
-                    f.setVisible(false);
-                    f.removeAll();
-                    f.add(canvas);
-                    f.setVisible(true);
-                }
-                if(e.getKeyChar() == '-'){
-                    canvas.zoom = canvas.zoom - 0.1 ;
-                    double  zoom =canvas.zoom;
-                    Mandelbrot canvas = new Mandelbrot(HEIGHT,zoom);
-                    f.setVisible(false);
-                    f.removeAll();
-                    f.add(canvas);
-                    f.setVisible(true);
-                }
-
-            }
-
-            @Override
-            public void keyReleased(KeyEvent e) {}
         });
         f.setVisible(true);
     }
