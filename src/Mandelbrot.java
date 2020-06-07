@@ -59,22 +59,7 @@ public class Mandelbrot extends Canvas {
      * @param height the size of the fractal (height x height pixels).
      */
     public Mandelbrot(int height) {
-        this.colorscheme = new int[MAX_ITERACAO + 1];
-        // fill array with color palette going from Red over Green to Blue
-        int scale = (255 * 2) / MAX_ITERACAO;
-
-        // going from Red to Green
-        for (int i = 0; i < (MAX_ITERACAO / 2); i++)
-            //               Alpha=255  | Red                   | Green       | Blue=0
-            colorscheme[i] = 0xFF << 24 | (255 - i * scale) << 16 | i * scale << 8;
-
-        // going from Green to Blue
-        for (int i = 0; i < (MAX_ITERACAO / 2); i++)
-            //                         Alpha=255 | Red=0 | Green              | Blue
-            colorscheme[i + MAX_ITERACAO / 2] = 0xFF000000 | (255 - i * scale) << 8 | i * scale;
-
-        // convergence color
-        colorscheme[MAX_ITERACAO] = 0xFF0000FF; // Blue
+        handleColor();
 
         this.height = height;
         // fractal[x][y] = fractal[x + height*y]
@@ -88,6 +73,35 @@ public class Mandelbrot extends Canvas {
         long end = System.currentTimeMillis();
         msg = " done in " + (end - start) + "ms.";
         this.img = getImageFromArray(fractal, height, height);
+    }
+
+    // funcao que pinta o fractal
+    private void handleColor() {
+        this.colorscheme = new int[MAX_ITERACAO + 1];
+
+        // color in green scale
+        for (int i = 0; i < MAX_ITERACAO; i++)
+            colorscheme[i] = getColor(i);
+
+        // cor de dentro do fractal
+        colorscheme[MAX_ITERACAO] = rgb(255, 0, 0, 0);
+    }
+
+    // funcao que devolve o codigo rgb da cor do pixel de acordo com a iteracao que ele faz parte
+    private int getColor(int iteracao) {
+        int scala = 255 / (MAX_ITERACAO / 4); // os primeiros 1/4 de iteracoes vao ter cores mais contrastadas q o resto
+        int intensidade = Math.min(iteracao * scala, 255); // nao deixa a cor passar de 255
+
+        return rgb(255, intensidade, intensidade, intensidade); // calcula uma escala de cinza
+    }
+
+    // funcao que calcula o rgb para um unico int
+    private int rgb(int alpha, int red, int green, int blue) {
+        int rgb = alpha;
+        rgb = (rgb << 8) + red;
+        rgb = (rgb << 8) + green;
+        rgb = (rgb << 8) + blue;
+        return rgb;
     }
 
     /**
